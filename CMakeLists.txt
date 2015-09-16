@@ -7,7 +7,7 @@ project(luasocket)
 #include_directories (../LuaJIT/src) 
 
 
-add_definitions(-DLUASOCKET_API= -DLUASOCKET_INET_PTON=1 -DLUASOCKET_INET_ATON=1 -DLUA_COMPAT_MODULE)
+add_definitions(-DLUASOCKET_API= -DLUASOCKET_INET_PTON=1 -DLUASOCKET_INET_ATON=1)
 if(WIN32)
     add_definitions(-D_WIN32_WINNT=0x501)
 endif()
@@ -22,6 +22,6 @@ if(LUASOCKET_SECURITY_SANDBOX_EXTERNAL)
 add_definitions(-DLUASOCKET_SANDBOX_EXTERNAL)
 endif()
 
-set(sources src/auxiliar.c src/buffer.c src/except.c src/inet.c src/io.c src/luasocket.c src/options.c src/select.c src/tcp.c src/timeout.c src/udp.c src/wsocket.c src/luasocket_restriction.c) 
+set(sources src/auxiliar.c src/buffer.c src/except.c src/inet.c src/io.c src/luasocket.c src/options.c src/select.c src/tcp.c src/timeout.c src/udp.c src/wsocket.c src/compat.c src/luasocket_restriction.c) 
 
 add_library(luasocket ${sources})
