@@ -2,9 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project(luasocket)
 
 
-include_directories(D:/root/deps/out/vs2013_x64/Release/LuaSandBox/include)
-
-include_directories(D:/root/deps/out/vs2013_x64/Release/LuaJIT/include)
+#BEAMNG_PATCH_HOOK
 
 #include_directories (../LuaJIT/src) 
 
