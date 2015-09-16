@@ -4,7 +4,7 @@
 extern int luasocket_ip_allowed(const char* hoststr);
 
 
-#ifndef LUASOCKET_SANDBOX_EXTERNAL
+#ifndef LUASOCKET_SECURITY_SANDBOX_EXTERNAL
 #include <stdio.h>
 
 int luasocket_ip_is_private(char* ip)
@@ -53,4 +53,4 @@ int luasocket_ip_allowed(const char* hoststr)
     return res;
 }
 
-#endif // LUASOCKET_SANDBOX_EXTERNAL
+#endif // LUASOCKET_SECURITY_SANDBOX_EXTERNAL
