@@ -69,6 +69,13 @@ static int inet_gethost(const char *address, struct hostent **hp) {
 static int inet_global_tohostname(lua_State *L) {
     const char *address = luaL_checkstring(L, 1);
     struct hostent *hp = NULL;
+#ifdef LUASOCKET_SECURITY_SANDBOX
+    if (luasocket_ip_allowed(address)) {
+        lua_pushnil(L);
+        lua_pushstring(L, "restricted");
+        return 2;
+    }
+#endif // LUASOCKET_SECURITY_SANDBOX
     int err = inet_gethost(address, &hp);
     if (err != IO_DONE) {
         lua_pushnil(L);
@@ -131,6 +138,13 @@ static int inet_global_getnameinfo(lua_State *L) {
 static int inet_global_toip(lua_State *L)
 {
     const char *address = luaL_checkstring(L, 1);
+#ifdef LUASOCKET_SECURITY_SANDBOX
+    if (luasocket_ip_allowed(address)) {
+        lua_pushnil(L);
+        lua_pushstring(L, "restricted");
+        return 2;
+    }
+#endif // LUASOCKET_SECURITY_SANDBOX
     struct hostent *hp = NULL;
     int err = inet_gethost(address, &hp);
     if (err != IO_DONE) {
@@ -394,6 +408,10 @@ const char *inet_trydisconnect(p_socket ps, int family, p_timeout tm)
 const char *inet_tryconnect(p_socket ps, int *family, const char *address,
         const char *serv, p_timeout tm, struct addrinfo *connecthints)
 {
+#ifdef LUASOCKET_SECURITY_SANDBOX
+    if (luasocket_ip_allowed(address))
+        return "connect restricted";
+#endif // LUASOCKET_SECURITY_SANDBOX
     struct addrinfo *iterator = NULL, *resolved = NULL;
     const char *err = NULL;
     int current_family = *family;
@@ -455,6 +473,10 @@ const char *inet_tryaccept(p_socket server, int family, p_socket client,
 \*-------------------------------------------------------------------------*/
 const char *inet_trybind(p_socket ps, int *family, const char *address,
     const char *serv, struct addrinfo *bindhints) {
+#ifdef LUASOCKET_SECURITY_SANDBOX
+    if (luasocket_ip_allowed(address))
+        return "bind restricted";
+#endif // LUASOCKET_SECURITY_SANDBOX
     struct addrinfo *iterator = NULL, *resolved = NULL;
     const char *err = NULL;
     int current_family = *family;

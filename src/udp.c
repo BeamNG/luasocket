@@ -170,6 +170,15 @@ static int meth_sendto(lua_State *L) {
     const char *data = luaL_checklstring(L, 2, &count);
     const char *ip = luaL_checkstring(L, 3);
     const char *port = luaL_checkstring(L, 4);
+
+#ifdef LUASOCKET_SECURITY_SANDBOX
+    if (luasocket_ip_allowed(ip)) {
+        lua_pushnil(L);
+        lua_pushstring(L, "restricted");
+        return 2;
+    }
+#endif // LUASOCKET_SECURITY_SANDBOX
+
     p_timeout tm = &udp->tm;
     int err;
     struct addrinfo aihint;
