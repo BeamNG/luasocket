@@ -7,7 +7,7 @@ project(luasocket)
 #include_directories (../LuaJIT/src) 
 
 
-add_definitions(-DLUASOCKET_API= -DLUASOCKET_INET_PTON=1 -DLUASOCKET_INET_ATON=1)
+add_definitions(-DLUASOCKET_API= -DLUASOCKET_INET_PTON=1 -DLUASOCKET_INET_ATON=1 -DLUA_COMPAT_MODULE)
 if(WIN32)
     add_definitions(-D_WIN32_WINNT=0x501)
 endif()
