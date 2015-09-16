@@ -2,7 +2,9 @@ cmake_minimum_required (VERSION 2.6)
 project(luasocket)
 
 
-include_directories (../LuaJIT/src) 
+#BEAMNG_PATCH_HOOK
+
+#include_directories (../LuaJIT/src) 
 
 
 add_definitions(-DLUASOCKET_API= -DLUASOCKET_INET_PTON=1 -DLUASOCKET_INET_ATON=1)
