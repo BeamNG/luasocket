@@ -9,7 +9,7 @@ project(luasocket)
 
 add_definitions(-DLUASOCKET_API= -DLUASOCKET_INET_PTON=1 -DLUASOCKET_INET_ATON=1)
 if(WIN32)
-    add_definitions(-D_WIN32_WINNT=0x501)
+    add_definitions(-D_WINSOCK_DEPRECATED_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -D_WIN32_WINNT=0x501)
 endif()
 
 option(LUASOCKET_SECURITY_SANDBOX "enables or disables the security sandbox" ON)
