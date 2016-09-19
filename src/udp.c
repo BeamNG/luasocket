@@ -38,6 +38,7 @@ static int meth_receivefrom(lua_State *L);
 static int meth_getfamily(lua_State *L);
 static int meth_getsockname(lua_State *L);
 static int meth_getpeername(lua_State *L);
+static int meth_gettimeout(lua_State *L);
 static int meth_setsockname(lua_State *L);
 static int meth_setpeername(lua_State *L);
 static int meth_close(lua_State *L);
@@ -68,6 +69,7 @@ static luaL_Reg udp_methods[] = {
     {"setpeername", meth_setpeername},
     {"setsockname", meth_setsockname},
     {"settimeout",  meth_settimeout},
+    {"gettimeout",  meth_gettimeout},
     {NULL,          NULL}
 };
 
@@ -118,8 +120,7 @@ static luaL_Reg func[] = {
 /*-------------------------------------------------------------------------*\
 * Initializes module
 \*-------------------------------------------------------------------------*/
-int udp_open(lua_State *L)
-{
+int udp_open(lua_State *L) {
     /* create classes */
     auxiliar_newclass(L, "udp{connected}", udp_methods);
     auxiliar_newclass(L, "udp{unconnected}", udp_methods);
@@ -130,6 +131,10 @@ int udp_open(lua_State *L)
     auxiliar_add2group(L, "udp{unconnected}", "select{able}");
     /* define library functions */
     luaL_setfuncs(L, func, 0);
+    /* export default UDP size */
+    lua_pushliteral(L, "_DATAGRAMSIZE");
+    lua_pushinteger(L, UDP_DATAGRAMSIZE);
+    lua_rawset(L, -3);
     return 0;
 }
 
@@ -213,49 +218,57 @@ static int meth_sendto(lua_State *L) {
 \*-------------------------------------------------------------------------*/
 static int meth_receive(lua_State *L) {
     p_udp udp = (p_udp) auxiliar_checkgroup(L, "udp{any}", 1);
-    char buffer[UDP_DATAGRAMSIZE];
-    size_t got, count = (size_t) luaL_optnumber(L, 2, sizeof(buffer));
+    char buf[UDP_DATAGRAMSIZE];
+    size_t got, wanted = (size_t) luaL_optnumber(L, 2, sizeof(buf));
+    char *dgram = wanted > sizeof(buf)? (char *) malloc(wanted): buf;
     int err;
     p_timeout tm = &udp->tm;
-    count = MIN(count, sizeof(buffer));
     timeout_markstart(tm);
-    err = socket_recv(&udp->sock, buffer, count, &got, tm);
-    /* Unlike TCP, recv() of zero is not closed, but a zero-length packet. */
-    if (err == IO_CLOSED)
-        err = IO_DONE;
-    if (err != IO_DONE) {
+    if (!dgram) {
         lua_pushnil(L);
-        lua_pushstring(L, udp_strerror(err));
+        lua_pushliteral(L, "out of memory");
         return 2;
     }
-    lua_pushlstring(L, buffer, got);
+    err = socket_recv(&udp->sock, dgram, wanted, &got, tm);
+    /* Unlike TCP, recv() of zero is not closed, but a zero-length packet. */
+    if (err != IO_DONE && err != IO_CLOSED) {
+        lua_pushnil(L);
+        lua_pushstring(L, udp_strerror(err));
+        if (wanted > sizeof(buf)) free(dgram);
+        return 2;
+    }
+    lua_pushlstring(L, dgram, got);
+    if (wanted > sizeof(buf)) free(dgram);
     return 1;
 }
 
 /*-------------------------------------------------------------------------*\
 * Receives data and sender from a UDP socket
 \*-------------------------------------------------------------------------*/
-static int meth_receivefrom(lua_State *L)
-{
+static int meth_receivefrom(lua_State *L) {
     p_udp udp = (p_udp) auxiliar_checkclass(L, "udp{unconnected}", 1);
-    char buffer[UDP_DATAGRAMSIZE];
-    size_t got, count = (size_t) luaL_optnumber(L, 2, sizeof(buffer));
-    int err;
-    p_timeout tm = &udp->tm;
+    char buf[UDP_DATAGRAMSIZE];
+    size_t got, wanted = (size_t) luaL_optnumber(L, 2, sizeof(buf));
+    char *dgram = wanted > sizeof(buf)? (char *) malloc(wanted): buf;
     struct sockaddr_storage addr;
     socklen_t addr_len = sizeof(addr);
     char addrstr[INET6_ADDRSTRLEN];
     char portstr[6];
+    int err;
+    p_timeout tm = &udp->tm;
     timeout_markstart(tm);
-    count = MIN(count, sizeof(buffer));
-    err = socket_recvfrom(&udp->sock, buffer, count, &got, (SA *) &addr,
+    if (!dgram) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "out of memory");
+        return 2;
+    }
+    err = socket_recvfrom(&udp->sock, dgram, wanted, &got, (SA *) &addr,
             &addr_len, tm);
     /* Unlike TCP, recv() of zero is not closed, but a zero-length packet. */
-    if (err == IO_CLOSED)
-        err = IO_DONE;
-    if (err != IO_DONE) {
+    if (err != IO_DONE && err != IO_CLOSED) {
         lua_pushnil(L);
         lua_pushstring(L, udp_strerror(err));
+        if (wanted > sizeof(buf)) free(dgram);
         return 2;
     }
     err = getnameinfo((struct sockaddr *)&addr, addr_len, addrstr,
@@ -263,19 +276,20 @@ static int meth_receivefrom(lua_State *L)
 	if (err) {
         lua_pushnil(L);
         lua_pushstring(L, gai_strerror(err));
+        if (wanted > sizeof(buf)) free(dgram);
         return 2;
     }
-    lua_pushlstring(L, buffer, got);
+    lua_pushlstring(L, dgram, got);
     lua_pushstring(L, addrstr);
     lua_pushinteger(L, (int) strtol(portstr, (char **) NULL, 10));
+    if (wanted > sizeof(buf)) free(dgram);
     return 3;
 }
 
 /*-------------------------------------------------------------------------*\
 * Returns family as string
 \*-------------------------------------------------------------------------*/
-static int meth_getfamily(lua_State *L)
-{
+static int meth_getfamily(lua_State *L) {
     p_udp udp = (p_udp) auxiliar_checkgroup(L, "udp{any}", 1);
     if (udp->family == AF_INET6) {
         lua_pushliteral(L, "inet6");
@@ -344,6 +358,11 @@ static int meth_getoption(lua_State *L) {
 static int meth_settimeout(lua_State *L) {
     p_udp udp = (p_udp) auxiliar_checkgroup(L, "udp{any}", 1);
     return timeout_meth_settimeout(L, &udp->tm);
+}
+
+static int meth_gettimeout(lua_State *L) {
+    p_udp udp = (p_udp) auxiliar_checkgroup(L, "udp{any}", 1);
+    return timeout_meth_gettimeout(L, &udp->tm);
 }
 
 /*-------------------------------------------------------------------------*\

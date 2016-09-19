@@ -36,6 +36,7 @@ static int meth_accept(lua_State *L);
 static int meth_close(lua_State *L);
 static int meth_getoption(lua_State *L);
 static int meth_setoption(lua_State *L);
+static int meth_gettimeout(lua_State *L);
 static int meth_settimeout(lua_State *L);
 static int meth_getfd(lua_State *L);
 static int meth_setfd(lua_State *L);
@@ -65,6 +66,7 @@ static luaL_Reg tcp_methods[] = {
     {"setpeername", meth_connect},
     {"setsockname", meth_bind},
     {"settimeout",  meth_settimeout},
+    {"gettimeout",  meth_gettimeout},
     {"shutdown",    meth_shutdown},
     {NULL,          NULL}
 };
@@ -73,6 +75,7 @@ static luaL_Reg tcp_methods[] = {
 static t_opt optget[] = {
     {"keepalive",   opt_get_keepalive},
     {"reuseaddr",   opt_get_reuseaddr},
+    {"reuseport",   opt_get_reuseport},
     {"tcp-nodelay", opt_get_tcp_nodelay},
     {"linger",      opt_get_linger},
     {"error",       opt_get_error},
@@ -82,6 +85,7 @@ static t_opt optget[] = {
 static t_opt optset[] = {
     {"keepalive",   opt_set_keepalive},
     {"reuseaddr",   opt_set_reuseaddr},
+    {"reuseport",   opt_set_reuseport},
     {"tcp-nodelay", opt_set_tcp_nodelay},
     {"ipv6-v6only", opt_set_ip6_v6only},
     {"linger",      opt_set_linger},
@@ -348,6 +352,12 @@ static int meth_settimeout(lua_State *L)
     return timeout_meth_settimeout(L, &tcp->tm);
 }
 
+static int meth_gettimeout(lua_State *L)
+{
+    p_tcp tcp = (p_tcp) auxiliar_checkgroup(L, "tcp{any}", 1);
+    return timeout_meth_gettimeout(L, &tcp->tm);
+}
+
 /*=========================================================================*\
 * Library functions
 \*=========================================================================*/
@@ -415,7 +425,7 @@ static int global_connect(lua_State *L) {
     bindhints.ai_family = family;
     bindhints.ai_flags = AI_PASSIVE;
     if (localaddr) {
-        err = inet_trybind(&tcp->sock, &tcp->family, localaddr, 
+        err = inet_trybind(&tcp->sock, &tcp->family, localaddr,
             localserv, &bindhints);
         if (err) {
             lua_pushnil(L);
@@ -427,7 +437,7 @@ static int global_connect(lua_State *L) {
     memset(&connecthints, 0, sizeof(connecthints));
     connecthints.ai_socktype = SOCK_STREAM;
     /* make sure we try to connect only to the same family */
-    connecthints.ai_family = tcp->family; 
+    connecthints.ai_family = tcp->family;
     err = inet_tryconnect(&tcp->sock, &tcp->family, remoteaddr, remoteserv,
          &tcp->tm, &connecthints);
     if (err) {
